@@ -1,3 +1,5 @@
+
+<img width="1254" height="1254" alt="custom-logo" src="https://github.com/user-attachments/assets/732625dd-1f53-4343-8af7-d4588662cf4b" />
 # Plex EPG -> XMLTV Docker
 
 Exports Plex guide data to standard XMLTV with a Web UI, channel map, and M3U-to-guide lineup matching.
