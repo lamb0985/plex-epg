@@ -1,5 +1,5 @@
+<img width="1448" height="1086" alt="icon-2" src="https://github.com/user-attachments/assets/3d039b7a-87d3-450e-8eab-696a0dbff206" />
 
-<img width="1254" height="1254" alt="custom-logo" src="https://github.com/user-attachments/assets/732625dd-1f53-4343-8af7-d4588662cf4b" />
 # Plex EPG -> XMLTV Docker
 
 Exports Plex guide data to standard XMLTV with a Web UI, channel map, and M3U-to-guide lineup matching.
@@ -174,6 +174,4 @@ The Web UI does not include built-in authentication. Keep it on a trusted networ
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
-
-<img width="1448" height="1086" alt="icon-2" src="https://github.com/user-attachments/assets/3d039b7a-87d3-450e-8eab-696a0dbff206" />
 
