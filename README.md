@@ -174,3 +174,6 @@ The Web UI does not include built-in authentication. Keep it on a trusted networ
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
+
+<img width="1448" height="1086" alt="icon-2" src="https://github.com/user-attachments/assets/3d039b7a-87d3-450e-8eab-696a0dbff206" />
+
