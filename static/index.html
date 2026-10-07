@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plex EPG Lineup Dashboard · Dracula</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><div class="eyebrow">Plex EPG → XMLTV · Dracula</div><h1>Lineup Dashboard</h1></div>
+    <div class="actions">
+      <button id="setupButton" class="button" onclick="openSetupWizard()">Setup Wizard</button>
+      <button id="refreshButton" class="button primary" onclick="runAction('/api/refresh', this)">Refresh EPG now</button>
+      <button id="recheckButton" class="button" onclick="runAction('/api/lineup/recheck', this)">Recheck lineup</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="cards status-grid">
+      <article class="card"><span class="label">Plex server</span><strong id="plexServer" class="mono wrap">—</strong></article>
+      <article class="card"><span class="label">Guide source</span><strong id="guideSource">—</strong><small id="lineupId" class="mono wrap"></small></article>
+      <article class="card"><span class="label">EPG status</span><strong id="epgStatus">—</strong><small id="programmeCount">—</small></article>
+      <article class="card"><span class="label">Channels</span><strong id="channelCount">—</strong><small id="idMode">—</small></article>
+      <article class="card"><span class="label">Guide days</span><strong id="guideDays">—</strong><small id="refreshEvery">—</small></article>
+      <article class="card"><span class="label">Last generated</span><strong id="modifiedText">—</strong><small id="fileSize">—</small></article>
+    </section>
+
+    <section class="card activity-card">
+      <div class="section-head">
+        <div><h2>Activity</h2><p id="activityMessage">Loading…</p></div>
+        <span id="activityBadge" class="badge">Idle</span>
+      </div>
+      <div class="activity-meta">
+        <span>Last refresh: <b id="lastRefresh">—</b></span>
+        <span>Next scheduled: <b id="nextRefresh">—</b></span>
+        <span>Output: <b id="outputPath" class="mono">—</b></span>
+      </div>
+      <div class="log-head">
+        <span>EPG processing log</span>
+        <button class="log-button" type="button" onclick="document.getElementById('exportLog').scrollTop=document.getElementById('exportLog').scrollHeight">Jump to latest</button>
+      </div>
+      <pre id="exportLog" class="export-log">Waiting for refresh output…</pre>
+    </section>
+
+    <section id="matchesSection" class="card" hidden>
+      <div class="section-head">
+        <div><h2>Lineup matching</h2><p>Comparison between your configured M3U and the current guide channel list.</p></div>
+        <div id="matchPills" class="summary-pills"></div>
+      </div>
+      <div class="table-tools">
+        <input type="search" placeholder="Filter lineup matches…" oninput="filterTable('matchesTable', this.value)">
+        <a class="text-link" href="/lineup_matches.csv">Download CSV</a>
+      </div>
+      <div class="table-wrap">
+        <table id="matchesTable">
+          <thead><tr><th>M3U #</th><th>M3U callsign</th><th>Guide #</th><th>Guide callsign</th><th>Match</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="matchesEmpty" class="card empty-state" hidden>
+      <h2>Lineup matching</h2>
+      <p>No lineup comparison report exists yet. Open <b>Setup Wizard</b> to configure the M3U and guide source.</p>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div><h2>Exported channels</h2><p>Exactly what the XMLTV exporter is using for channel IDs.</p></div>
+        <div class="summary-pills"><a class="pill link" href="/channel_map.csv">channel_map.csv</a><a class="pill link" href="/plex-epg.xml">plex-epg.xml</a></div>
+      </div>
+      <div class="table-tools"><input type="search" placeholder="Search number, callsign, title or XMLTV ID…" oninput="filterTable('channelsTable', this.value)"></div>
+      <div class="table-wrap tall">
+        <table id="channelsTable">
+          <thead><tr><th>Channel</th><th>Callsign</th><th>Name</th><th>XMLTV ID</th><th>Plex ID</th><th>Logo</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="setupModal" class="modal-backdrop" hidden>
+    <section class="setup-modal" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+      <div class="section-head setup-head">
+        <div><div class="eyebrow">Configuration</div><h2 id="setupTitle">Setup Wizard</h2><p>Configure Plex, guide source, M3U matching, and refresh settings.</p></div>
+        <button class="icon-button" type="button" onclick="closeSetupWizard()" aria-label="Close">×</button>
+      </div>
+      <div class="setup-grid">
+        <label><span>Plex server</span><input id="setupServer" type="text" placeholder="10.0.0.10:32400 or https://plex.example.com"></label>
+        <label><span>Plex token</span><input id="setupToken" type="password" autocomplete="off" placeholder="Enter token"></label>
+        <label class="wide"><span>Guide source</span><select id="setupSource" onchange="setupSourceChanged()"><option value="dvr">Existing Plex DVR</option><option value="zipcode">Plex EPG Zipcode</option></select></label>
+        <label class="wide"><span>M3U path or URL</span><input id="setupM3u" type="text" placeholder="http://host/playlist.m3u or mounted local path"></label>
+        <label id="setupPostalWrap" hidden><span>US ZIP code</span><input id="setupPostal" type="text" inputmode="numeric" maxlength="5" placeholder="12345"></label>
+        <label><span>Guide days</span><input id="setupDays" type="number" min="1" max="14" value="3"></label>
+        <label><span>XMLTV ID mode</span><select id="setupIdMode"><option value="callsign">Callsign</option><option value="vcn">Channel number (VCN)</option><option value="plex">Plex channel ID</option></select></label>
+        <label><span>Refresh every (hours)</span><input id="setupHours" type="number" min="0.0167" step="0.25" value="6"></label>
+      </div>
+      <div id="setupLineupWrap" class="setup-lineups" hidden>
+        <div class="label">Plex EPG Zipcode lineups</div>
+        <select id="setupLineup"></select>
+      </div>
+      <div id="setupResult" class="setup-result" hidden></div>
+      <div class="setup-actions">
+        <button id="setupPreviewButton" class="button" type="button" onclick="previewSetup()">Test &amp; find lineup</button>
+        <button id="setupSaveButton" class="button primary" type="button" onclick="saveSetup()">Save configuration</button>
+      </div>
+    </section>
+  </div>
+  <div id="toast" class="toast" hidden></div>
+<script>
+const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+function filterTable(id, value) { const q=value.trim().toLowerCase(); document.querySelectorAll('#'+id+' tbody tr').forEach(r=>r.hidden=!!q&&!r.textContent.toLowerCase().includes(q)); }
+function fmtDate(v){ if(!v)return '—'; const d=new Date(v); return Number.isNaN(d.getTime())?v:d.toLocaleString(); }
+function fmtBytes(n){ if(!n)return '—'; return (n/1048576).toFixed(2)+' MiB'; }
+function toast(message,bad=false){ const b=document.getElementById('toast'); b.textContent=message; b.className='toast'+(bad?' bad-toast':''); b.hidden=false; clearTimeout(window.toastTimer); window.toastTimer=setTimeout(()=>b.hidden=true,4500); }
+async function getJSON(url){ const r=await fetch(url,{cache:'no-store'}); if(!r.ok)throw new Error(r.status+' '+r.statusText); return r.json(); }
+async function runAction(url,button){ const old=button.textContent; button.disabled=true; button.textContent='Starting…'; try{const r=await fetch(url,{method:'POST'}); const d=await r.json(); toast(d.message||'Started',!r.ok);}catch(e){toast('Request failed: '+e.message,true);}finally{button.disabled=false;button.textContent=old;setTimeout(loadAll,800);} }
+function badgeClass(method,matched){ if(!matched)return 'bad'; return method.includes('review')?'warn':'ok'; }
+async function loadStatus(){
+  const d=await getJSON('/api/status'), c=d.config, x=d.xmltv, s=d.state;
+  document.getElementById('refreshButton').disabled=!!d.setup_required;
+  if(d.setup_required&&!window.setupAutoOpened){window.setupAutoOpened=true;setTimeout(openSetupWizard,150);}
+  document.getElementById('plexServer').textContent=c.plex_server||'Not configured';
+  document.getElementById('guideSource').textContent=c.source==='zipcode'?'Plex EPG Zipcode':'Existing Plex DVR';
+  document.getElementById('lineupId').textContent=c.lineup_id||'';
+  document.getElementById('recheckButton').hidden=!c.m3u_path;
+  const epg=document.getElementById('epgStatus'); epg.textContent=x.exists?'Ready':'Not generated'; epg.className=x.exists?'ok':'bad';
+  document.getElementById('programmeCount').textContent=x.exists?Number(x.programmes).toLocaleString()+' programmes':'—';
+  document.getElementById('channelCount').textContent=Number(d.channel_count).toLocaleString();
+  document.getElementById('idMode').textContent='ID mode: '+(c.id_mode||'unknown');
+  document.getElementById('guideDays').textContent=c.days||'—';
+  document.getElementById('refreshEvery').textContent='Refresh every '+(c.refresh_interval/3600).toFixed(2).replace(/\.00$/,'')+' hours';
+  document.getElementById('modifiedText').textContent=fmtDate(x.modified); document.getElementById('fileSize').textContent=fmtBytes(x.size_bytes);
+  document.getElementById('activityMessage').textContent=s.last_export_message||'Idle';
+  document.getElementById('lastRefresh').textContent=fmtDate(s.last_export_finished||x.modified); document.getElementById('nextRefresh').textContent=fmtDate(s.next_refresh); document.getElementById('outputPath').textContent=c.epg_output||'—';
+  const log=document.getElementById('exportLog'), nearBottom=(log.scrollHeight-log.scrollTop-log.clientHeight)<60;
+  const lines=Array.isArray(s.export_log)?s.export_log:[];
+  log.textContent=lines.length?lines.join('\n'):(s.export_running?'Waiting for exporter output…':'No processing output yet.');
+  if(nearBottom||s.export_running)log.scrollTop=log.scrollHeight;
+  const b=document.getElementById('activityBadge'); b.textContent=s.export_running?'Refreshing':(s.last_export_ok===true?'OK':(s.last_export_ok===false?'Error':'Idle')); b.className='badge '+(s.export_running?'working':(s.last_export_ok===true?'ok':(s.last_export_ok===false?'bad':'')));
+}
+async function loadChannels(){ const d=await getJSON('/api/channels'), body=document.querySelector('#channelsTable tbody'); body.innerHTML=d.channels.map(r=>`<tr><td class="strong">${esc(r.vcn||'—')}</td><td>${esc(r.call_sign||'—')}</td><td>${esc(r.title||'—')}</td><td class="mono">${esc(r.xmltv_id||'')}</td><td class="mono muted">${esc(r.plex_channel_id||r.grid_key||'')}</td><td>${r.logo?`<span class="logo-tile"><img class="logo" src="${esc(r.logo)}" loading="lazy" alt=""></span>`:'—'}</td></tr>`).join(''); }
+async function loadMatches(){ const d=await getJSON('/api/matches'), sec=document.getElementById('matchesSection'), empty=document.getElementById('matchesEmpty'); if(!d.active){sec.hidden=true;empty.hidden=true;return;} if(!d.matches.length){sec.hidden=true;empty.hidden=false;return;} sec.hidden=false;empty.hidden=true; const s=d.summary; document.getElementById('matchPills').innerHTML=`<span class="pill ok">${s.matched}/${s.total} matched</span><span class="pill">${s.exact} exact</span>${s.review?`<span class="pill warn">${s.review} review</span>`:''}${s.unmatched?`<span class="pill bad">${s.unmatched} unmatched</span>`:''}`; document.querySelector('#matchesTable tbody').innerHTML=d.matches.map(r=>{const matched=!!(r.Guide_callsign||r.Guide_number), method=r.Method||'unmatched';return `<tr><td>${esc(r.M3U_number||'—')}</td><td class="strong">${esc(r.M3U_callsign||'—')}</td><td>${esc(r.Guide_number||'—')}</td><td>${esc(r.Guide_callsign||'—')}</td><td><span class="badge ${badgeClass(method,matched)}">${esc(method)}</span></td></tr>`}).join(''); }
+function setupPayload(){ return {
+  plex_server:document.getElementById('setupServer').value.trim(),
+  plex_token:document.getElementById('setupToken').value.trim(),
+  source:document.getElementById('setupSource').value,
+  m3u_path:document.getElementById('setupM3u').value.trim(),
+  postal_code:document.getElementById('setupPostal').value.trim(),
+  lineup_id:document.getElementById('setupLineup').value,
+  days:document.getElementById('setupDays').value,
+  id_mode:document.getElementById('setupIdMode').value,
+  refresh_hours:document.getElementById('setupHours').value
+}; }
+function setupSourceChanged(){ const zip=document.getElementById('setupSource').value==='zipcode'; document.getElementById('setupPostalWrap').hidden=!zip; if(!zip)document.getElementById('setupLineupWrap').hidden=true; document.getElementById('setupPreviewButton').textContent=zip?'Find matching lineups':'Test Existing Plex DVR'; }
+function setupMessage(message,bad=false){ const el=document.getElementById('setupResult'); el.hidden=false; el.className='setup-result'+(bad?' bad-result':''); el.textContent=message; }
+async function openSetupWizard(){
+  const m=document.getElementById('setupModal'); m.hidden=false; document.body.classList.add('modal-open');
+  try{ const d=await getJSON('/api/setup/status');
+    document.getElementById('setupServer').value=d.plex_server||'';
+    const tok=document.getElementById('setupToken'); tok.value=''; tok.placeholder=d.has_token?'Leave blank to keep existing token':'Enter Plex token';
+    document.getElementById('setupSource').value=d.source||'dvr'; document.getElementById('setupM3u').value=d.m3u_path||'';
+    document.getElementById('setupPostal').value=d.postal_code||''; document.getElementById('setupDays').value=d.days||'3';
+    document.getElementById('setupIdMode').value=d.id_mode||'callsign'; document.getElementById('setupHours').value=d.refresh_hours||'6';
+    document.getElementById('setupLineup').innerHTML=''; document.getElementById('setupLineupWrap').hidden=true; document.getElementById('setupResult').hidden=true; setupSourceChanged();
+  }catch(e){setupMessage('Unable to load setup: '+e.message,true);}
+}
+function closeSetupWizard(){ document.getElementById('setupModal').hidden=true; document.body.classList.remove('modal-open'); }
+async function setupRequest(url,button){ const old=button.textContent; button.disabled=true; button.textContent='Working…'; try{ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(setupPayload())}); const d=await r.json(); if(!r.ok||!d.ok)throw new Error(d.message||r.statusText); return d; } finally{button.disabled=false;button.textContent=old;} }
+async function previewSetup(){ const b=document.getElementById('setupPreviewButton'); try{ const d=await setupRequest('/api/setup/preview',b); if(d.source==='dvr'){ setupMessage(`Existing Plex DVR verified: ${d.matched}/${d.total} M3U channels matched; ${d.exact} exact; ${d.review} need review.`); } else { const sel=document.getElementById('setupLineup'); sel.innerHTML=d.lineups.map((x,i)=>`<option value="${esc(x.id)}">${esc(x.title)} — ${x.matched}/${x.total} matched, ${x.exact} exact${i===0?' — Recommended':''}</option>`).join(''); document.getElementById('setupLineupWrap').hidden=false; setupMessage(`${d.lineups.length} Plex EPG Zipcode lineup${d.lineups.length===1?'':'s'} checked. Select the lineup you want, then save.`); } }catch(e){setupMessage(e.message,true);} }
+async function saveSetup(){ const b=document.getElementById('setupSaveButton'); try{ const d=await setupRequest('/api/setup/save',b); setupMessage(d.message+` ${d.matched}/${d.total} M3U channels matched.`); document.getElementById('setupToken').value=''; setTimeout(()=>{closeSetupWizard();loadAll();},1200); }catch(e){setupMessage(e.message,true);} }
+
+async function loadAll(){ try{await Promise.all([loadStatus(),loadChannels(),loadMatches()]);}catch(e){toast('Dashboard update failed: '+e.message,true);} }
+setInterval(loadStatus,5000); loadAll();
+</script>
+</body>
+</html>

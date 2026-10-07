@@ -1,0 +1,16 @@
+services:
+  plex-epg:
+    image: lamb0985/plex-epg:latest
+    container_name: plex-epg
+    restart: unless-stopped
+
+    environment:
+      PUID: "1000"
+      PGID: "100"
+
+    ports:
+      - "7538:8080"
+
+    volumes:
+      - <host_path_to_config>:/config
+      - <host_path_to_output>:/output
