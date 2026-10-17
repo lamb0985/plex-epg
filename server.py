@@ -212,12 +212,14 @@ def _write_matches(matches) -> None:
     LINEUP_MATCHES_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with temporary.open('w', newline='', encoding='utf-8') as handle:
         writer = csv.writer(handle)
-        writer.writerow(['M3U_callsign', 'M3U_number', 'Guide_callsign', 'Guide_number', 'Method'])
+        writer.writerow(['M3U_callsign', 'M3U_number', 'Guide_callsign', 'Guide_number', 'Method', 'Plex_number'])
         for match in matches:
             channel = match['channel'] or {}
+            raw_number = str(channel.get('vcn') or '').strip()
+            guide_number = str(int(raw_number)) if raw_number.isascii() and raw_number.isdecimal() else raw_number
             writer.writerow([
                 match['network']['callsign'], match['network']['number'],
-                channel.get('callSign', ''), channel.get('vcn', ''), match['method'],
+                channel.get('callSign', ''), guide_number, match['method'], raw_number,
             ])
     temporary.replace(LINEUP_MATCHES_OUTPUT)
 
@@ -320,12 +322,14 @@ def recheck_lineup() -> bool:
         temporary = LINEUP_MATCHES_OUTPUT.with_suffix('.csv.tmp')
         with temporary.open('w', newline='', encoding='utf-8') as handle:
             writer = csv.writer(handle)
-            writer.writerow(['M3U_callsign', 'M3U_number', 'Guide_callsign', 'Guide_number', 'Method'])
+            writer.writerow(['M3U_callsign', 'M3U_number', 'Guide_callsign', 'Guide_number', 'Method', 'Plex_number'])
             for match in matches:
                 channel = match['channel'] or {}
+                raw_number = str(channel.get('vcn') or '').strip()
+                guide_number = str(int(raw_number)) if raw_number.isascii() and raw_number.isdecimal() else raw_number
                 writer.writerow([
                     match['network']['callsign'], match['network']['number'],
-                    channel.get('callSign', ''), channel.get('vcn', ''), match['method'],
+                    channel.get('callSign', ''), guide_number, match['method'], raw_number,
                 ])
         temporary.replace(LINEUP_MATCHES_OUTPUT)
 
