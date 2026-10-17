@@ -350,7 +350,9 @@ def channel_xml(
     if title and title != callsign:
         add_text(node, "display-name", title, lang=language)
     if vcn:
-        add_text(node, "display-name", vcn)
+        # Normalize numeric guide numbers to match unpadded M3U channel numbers.
+        display_number = str(int(vcn)) if vcn.isascii() and vcn.isdecimal() else vcn
+        add_text(node, "display-name", display_number)
 
     logo = clean_id(channel.get("thumb"))
     if logo:
