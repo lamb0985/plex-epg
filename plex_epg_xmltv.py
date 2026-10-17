@@ -227,10 +227,12 @@ def write_lineup_matches(current_channels: list[dict[str, Any]]) -> None:
         temp = output.with_suffix(".csv.tmp")
         with temp.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.writer(handle)
-            writer.writerow(["M3U_callsign", "M3U_number", "Guide_callsign", "Guide_number", "Method"])
+            writer.writerow(["M3U_callsign", "M3U_number", "Guide_callsign", "Guide_number", "Method", "Plex_number"])
             for m in matches:
                 c = m["channel"] or {}
-                writer.writerow([m["network"]["callsign"], m["network"]["number"], c.get("callSign", ""), c.get("vcn", ""), m["method"]])
+                raw_number = clean_id(c.get("vcn"))
+                guide_number = str(int(raw_number)) if raw_number.isascii() and raw_number.isdecimal() else raw_number
+                writer.writerow([m["network"]["callsign"], m["network"]["number"], c.get("callSign", ""), guide_number, m["method"], raw_number])
         temp.replace(output)
         matched = sum(m["channel"] is not None for m in matches)
         print(f"Lineup matches: {matched}/{len(matches)} -> {output}")
