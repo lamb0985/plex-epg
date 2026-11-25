@@ -519,6 +519,8 @@ class Handler(BaseHTTPRequestHandler):
                     print(f'[plex-epg] Web UI accessed at {scheme}://{host}/', flush=True)
                     Handler._logged_public_url = True
             self._file(STATIC_DIR / 'index.html', 'text/html; charset=utf-8')
+        elif path == '/static/plex-epg-banner.png':
+            self._file(STATIC_DIR / 'plex-epg-banner.png', 'image/png')
         elif path == '/static/app.css':
             self._file(STATIC_DIR / 'app.css', 'text/css; charset=utf-8')
         elif path == '/api/status':
